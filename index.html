@@ -1,0 +1,119 @@
+import gradio as gr
+
+#  crucial import: we are importing the "brain" (the GravityStation class)
+# from our "brain" file (HW_Gravity_Calculator.py)
+# 關鍵！我們要從「大腦」檔案中，匯入「大腦」的 Class
+from HW_Gravity_Calculator import GravityStation
+
+# --- Gradio 介面的核心函式 ---
+# 這個函式就是「臉」和「大腦」溝通的橋樑
+
+def calculate_gravity_report(station_type, lat, lon, h, g_obs, rho_rock):
+    """
+    Gradio 按下按鈕時，會呼叫這個函式。
+    """
+    try:
+        # 1. 檢查輸入的類型是否正確
+        lat = float(lat)
+        lon = float(lon)
+        h = float(h)
+        g_obs = float(g_obs)
+        rho_rock = float(rho_rock)
+        
+        # 2. 建立「大腦」的實例 (Instance)
+        # 根據使用者選擇的類型 ("陸地" 或 "海洋") 來建立
+        station = GravityStation(
+            lat=lat,
+            lon=lon,
+            h=h,
+            g_obs=g_obs,
+            station_type=station_type.lower(), # 轉成小寫 "land" 或 "marine"
+            rho_rock=rho_rock
+            # 我們在這裡使用自定義的岩石密度！這就是「彈性」！
+        )
+        
+        # 3. 呼叫「大腦」進行計算
+        station.process_all()
+        
+        # 4. 從「大腦」取得格式化的報告
+        station.generate_report()
+        report_text = station.report
+        
+        # 5. 把報告傳回給「臉」(Gradio 介面)
+        return report_text
+        
+    except Exception as e:
+        # 如果使用者亂輸入 (例如輸入文字)，就會在這裡報錯
+        return f"計算出錯了！ 😱\n請檢查你的輸入值是否都是數字。\n錯誤訊息: {str(e)}"
+
+# --- 建立 Gradio 介面 ("臉") ---
+
+# 老師的歡迎詞
+intro_markdown = """
+# 👨‍🏫 地球物理重力計算工作站 v2.0
+(專業可擴展版)
+
+這是一個專業的地球物理計算工具，由一個「**Gradio 前端 (臉)**」和一個「**Python 後端 (大腦)**」組成。
+請輸入您測站的完整資料，本系統將自動計算完整的重力異常報告。
+"""
+
+with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange")) as demo:
+    
+    gr.Markdown(intro_markdown)
+    
+    with gr.Row():
+        # --- 左邊：輸入介面 ---
+        with gr.Column(scale=2):
+            gr.Markdown("### 1. 📡 輸入測站資料")
+            
+            station_type_input = gr.Radio(
+                ["Land", "Marine"], 
+                label="測站類型 (Station Type)", 
+                value="Land"
+            )
+            
+            g_obs_input = gr.Number(label="觀測重力 (g_obs) [mGal]", value=980717.39)
+            lat_input = gr.Number(label="緯度 (Latitude) [度]", value=48.1195)
+            lon_input = gr.Number(label="經度 (Longitude) [度]", value=12.1878)
+            h_input = gr.Number(label="高程(陸地) / 水深(海洋) (h) [m]", value=487.9)
+            
+            with gr.Accordion("進階選項 (密度)", open=False):
+                rho_rock_input = gr.Slider(
+                    minimum=1.0, 
+                    maximum=3.5, 
+                    value=2.67, 
+                    step=0.01, 
+                    label="地殼岩石密度 (ρ_rock) [g/cm³]"
+                )
+            
+            submit_button = gr.Button("🚀 產生專業報告", variant="primary")
+
+        # --- 右邊：輸出介面 ---
+        with gr.Column(scale=3):
+            gr.Markdown("### 2. 📄 輸出計算報告")
+            report_output = gr.Textbox(
+                label="地球物理計算結果",
+                lines=17,
+                show_copy_button=True
+            )
+
+    # 綁定按鈕與函式
+    submit_button.click(
+        fn=calculate_gravity_report,
+        inputs=[
+            station_type_input,
+            lat_input,
+            lon_input,
+            h_input,
+            g_obs_input,
+            rho_rock_input
+        ],
+        outputs=[report_output]
+    )
+    
+    # 學生作業資訊
+    gr.Markdown("---")
+    gr.Markdown("作業七 - 地球物理重力計算 (可擴展模組版)")
+
+# 啟動 APP
+demo.launch()

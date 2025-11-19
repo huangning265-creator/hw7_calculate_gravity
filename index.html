@@ -12,7 +12,8 @@
     <p class="muted">輸入測站資料，按下「產生專業報告」。（後端由 Flask 提供計算）</p>
 
     <section class="form-card">
-      <form id="gravityForm">
+      <!-- 🔥 這裡改成標準 POST 表單送到 /calculate -->
+      <form id="gravityForm" method="POST" action="/calculate">
         <div class="row">
           <label>測站類型</label>
           <select name="station_type" id="station_type">
@@ -56,14 +57,14 @@
 
     <section class="result-card">
       <h2>計算報告</h2>
-      <pre id="reportBox" class="report-box">結果會顯示在這裡...</pre>
+      <pre id="reportBox" class="report-box">
+提交後，將會跳轉到完整的報告頁。
+      </pre>
     </section>
   </main>
 
   <script>
-    // 範例前端行為：透過 fetch 將 JSON 傳到後端 /calculate
-    const form = document.getElementById('gravityForm');
-    const reportBox = document.getElementById('reportBox');
+    // 更新滑桿顯示
     const rho = document.getElementById('rho_rock');
     const rhoVal = document.getElementById('rho_val');
 
@@ -71,38 +72,8 @@
       rhoVal.textContent = e.target.value;
     });
 
-    form.addEventListener('submit', async (ev) => {
-      ev.preventDefault();
-      reportBox.textContent = "計算中，請稍候…";
-
-      const payload = {
-        station_type: document.getElementById('station_type').value,
-        g_obs: document.getElementById('g_obs').value,
-        lat: document.getElementById('lat').value,
-        lon: document.getElementById('lon').value,
-        h: document.getElementById('h').value,
-        rho_rock: document.getElementById('rho_rock').value
-      };
-
-      try {
-        const resp = await fetch('/calculate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (!resp.ok) {
-          const err = await resp.json();
-          reportBox.textContent = "伺服器回傳錯誤： " + (err.message || JSON.stringify(err));
-          return;
-        }
-
-        const data = await resp.json();
-        reportBox.textContent = data.report;
-      } catch (e) {
-        reportBox.textContent = "無法連線至後端，請確認伺服器是否啟動。\n錯誤：" + e;
-      }
-    });
+    // ❌ 移除 fetch 行為（因為我們要跳轉頁面）
+    // form 不需要 JavaScript submit handler
   </script>
 </body>
 </html>

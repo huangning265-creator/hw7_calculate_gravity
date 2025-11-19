@@ -1,115 +1,158 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Gravity Station — Web Interface</title>
-  <link rel="stylesheet" href="/static/styles.css" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>重力測站計算（理論重力 / 自由空氣 / Bouguer）</title>
   <style>
-    /* 報告樣式 */
-    .report-section { 
-      border: 1px solid #ccc; 
-      padding: 1em; 
-      margin-top: 1em; 
-      background: #f9f9f9; 
-      white-space: pre-wrap;
-    }
-    .row { margin-bottom: 0.8em; }
+    body{font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif; line-height:1.6; padding:28px; max-width:980px; margin:0 auto; color:#111}
+    h1,h2{color:#0b5ed7}
+    pre{background:#f7f7fb;border:1px solid #e6e7ee;padding:14px;overflow:auto;border-radius:8px}
+    code{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Noto Sans Mono', monospace}
+    .meta{background:#f1f8ff;border-left:4px solid #0b5ed7;padding:10px;border-radius:6px;margin-bottom:12px}
+    .btn{display:inline-block;background:#0b5ed7;color:#fff;padding:8px 12px;border-radius:6px;text-decoration:none;border:none;cursor:pointer}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media(max-width:720px){.grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
-  <main class="container">
-    <h1>地球物理重力計算工作站 v2.0</h1>
-    <p class="muted">輸入測站資料，按下「產生專業報告」。（純前端運算）</p>
+  <h1>重力測站計算報告（HTML）</h1>
+  <div class="meta">
+    <strong>輸入資料</strong><br>
+    緯度：48.1195° N<br>
+    經度：12.1878° E（本題中無直接使用）<br>
+    高程（站高）：487.9 m<br>
+    觀測重力：980,717.39 mGal
+  </div>
 
-    <section class="form-card">
-      <form id="gravityForm">
-        <div class="row">
-          <label>測站類型</label>
-          <select name="station_type" id="station_type">
-            <option value="Land" selected>Land</option>
-            <option value="Marine">Marine</option>
-          </select>
-        </div>
+  <h2>題目簡述（中文）</h2>
+  <p>請計算下列項目：<br>
+  (a) i) 理論重力； ii) 自由空氣修正（Free-air correction）； iii) Bouguer 修正； iv) 自由空氣重力異常； v) Bouguer 重力異常。<br>
+  (b) 若測站位於海面（在該點下方水深等於 487.9 m），在相同緯度與相同觀測重力下，重新計算自由空氣異常與 Bouguer 異常（考慮海水密度）。</p>
 
-        <div class="row">
-          <label for="g_obs">觀測重力 g_obs (mGal)</label>
-          <input type="number" step="any" id="g_obs" name="g_obs" value="980717.39" required />
-        </div>
+  <h2>採用公式與預設常數</h2>
+  <div class="grid">
+    <div>
+      <strong>理論重力（採用）：</strong><br>
+      國際常用多項式近似：
+      <pre><code>g(φ)=978031.851 mGal * (1 + 0.005278895*sin²φ + 0.000023462*sin⁴φ)</code></pre>
+    </div>
+    <div>
+      <strong>修正與常數</strong>
+      <ul>
+        <li>自由空氣修正（FAC）係數：0.3086 mGal/m</li>
+        <li>Bouguer 修正常用係數（簡化）：0.04193 × ρ × h（單位 mGal；ρ 為密度 kg/m³）</li>
+        <li>預設岩石密度 ρ_rock = 2670 kg/m³；海水密度 ρ_water = 1025 kg/m³</li>
+      </ul>
+    </div>
+  </div>
 
-        <div class="row">
-          <label for="lat">緯度 (degree)</label>
-          <input type="number" step="any" id="lat" name="lat" value="48.1195" required />
-        </div>
+  <h2>說明（計算流程）</h2>
+  <ol>
+    <li>計算理論重力 g_theoretical（海平面值，與緯度有關）</li>
+    <li>計算自由空氣修正 FAC = 0.3086 × h（mGal）</li>
+    <li>計算簡化 Bouguer 修正：Δg_Bouguer = 0.04193 × ρ × h（mGal）</li>
+    <li>自由空氣異常 FA = g_obs − g_theoretical + FAC</li>
+    <li>Bouguer 異常 B = g_obs − g_theoretical + FAC − Δg_Bouguer</li>
+    <li>海面情況：站高視為 0，Bouguer 修正改為使用 (ρ_rock − ρ_water) × h 對應的質量差</li>
+  </ol>
 
-        <div class="row">
-          <label for="lon">經度 (degree)</label>
-          <input type="number" step="any" id="lon" name="lon" value="12.1878" required />
-        </div>
+  <h2>Python 程式碼（可複製並執行）</h2>
+  <p>按下「複製程式碼」後可貼到你的編輯器執行。</p>
+  <button class="btn" id="copyBtn">複製程式碼</button>
+  <pre id="pycode"><code>
+import math
 
-        <div class="row">
-          <label for="h">高程 / 水深 h (m)</label>
-          <input type="number" step="any" id="h" name="h" value="487.9" required />
-        </div>
+# ============================
+# Input data
+# ============================
+lat = 48.1195              # degrees
+h = 487.9                  # elevation (m)
+g_obs = 980717.39          # observed gravity (mGal)
 
-        <details class="row" style="margin-top:8px;">
-          <summary>進階選項 (密度)</summary>
-          <label for="rho_rock">地殼岩石密度 ρ_rock (g/cm³)</label>
-          <input type="range" id="rho_rock" name="rho_rock" min="1.0" max="3.5" step="0.01" value="2.67" />
-          <span id="rho_val">2.67</span>
-        </details>
+rho_rock = 2670            # kg/m^3
+rho_water = 1025           # kg/m^3
 
-        <div class="row">
-          <button type="submit" id="submitBtn">🚀 產生專業報告</button>
-        </div>
-      </form>
-    </section>
+# ============================
+# 1. Theoretical gravity (mGal)
+# International gravity formula
+# ============================
+phi = math.radians(lat)
+g_theoretical = 978031.851 * (1 
+                              + 0.005278895 * math.sin(phi)**2
+                              + 0.000023462 * math.sin(phi)**4)
 
-    <section class="result-card">
-      <h2>計算報告</h2>
-      <div id="reportBox" class="report-section">
-        結果會顯示在這裡...
-      </div>
-    </section>
-  </main>
+# ============================
+# 2. Free-air correction (FAC)
+# +0.3086 mGal per meter
+# ============================
+FAC = 0.3086 * h
+
+# ============================
+# 3. Bouguer correction
+# Δg_B = 0.04193 * rho * h   (mGal)
+# ============================
+Bouguer_corr = 0.04193 * rho_rock * h / 1000  # convert μGal to mGal
+
+# ============================
+# 4. Free-air anomaly
+# Δg_FA = g_obs - g_theoretical + FAC
+# ============================
+FA_anomaly = g_obs - g_theoretical + FAC
+
+# ============================
+# 5. Bouguer anomaly
+# Δg_B = g_obs - g_theoretical + FAC - Bouguer_corr
+# ============================
+Bouguer_anomaly = g_obs - g_theoretical + FAC - Bouguer_corr
+
+# ============================
+# Part (b): Station located at sea surface,
+# over water depth equal to 487.9 m
+# ============================
+
+# Free-air anomaly is same formula (h = 0 at sea surface!)
+FA_anomaly_sea = g_obs - g_theoretical  # no freeair term because h=0
+
+# Water Bouguer correction:
+# Use density difference: (rho_rock - rho_water)
+B_corr_water = 0.04193 * (rho_rock - rho_water) * h / 1000
+
+Bouguer_anomaly_sea = g_obs - g_theoretical - B_corr_water
+
+# ============================
+# Print results
+# ============================
+print("\n=== Results (Part a) ===")
+print(f"Theoretical gravity:       {g_theoretical:.2f} mGal")
+print(f"Free-air correction (FAC): {FAC:.2f} mGal")
+print(f"Bouguer correction:        {Bouguer_corr:.2f} mGal")
+print(f"Free-air anomaly:          {FA_anomaly:.2f} mGal")
+print(f"Bouguer anomaly:           {Bouguer_anomaly:.2f} mGal")
+
+print("\n=== Results (Part b: Ocean Surface) ===")
+print(f"Free-air anomaly (sea):    {FA_anomaly_sea:.2f} mGal")
+print(f"Bouguer anomaly (sea):     {Bouguer_anomaly_sea:.2f} mGal")
+  </code></pre>
+
+  <h2>如何使用</h2>
+  <ol>
+    <li>將上方程式複製到本機 Python 檔案（例如 <code>gravity_calc.py</code>），或在 Jupyter/Colab 上執行。</li>
+    <li>執行後會在終端顯示理論重力、各修正與異常值。</li>
+    <li>若要改密度、緯度或站高，請修改開頭的變數。</li>
+  </ol>
 
   <script>
-    const form = document.getElementById('gravityForm');
-    const reportBox = document.getElementById('reportBox');
-    const rho = document.getElementById('rho_rock');
-    const rhoVal = document.getElementById('rho_val');
-
-    // 更新滑桿數值
-    rho.addEventListener('input', (e) => {
-      rhoVal.textContent = e.target.value;
-    });
-
-    // 表單提交事件（純前端運算）
-    form.addEventListener('submit', (ev) => {
-      ev.preventDefault(); // 不刷新頁面
-
-      const station_type = document.getElementById('station_type').value;
-      const g_obs = parseFloat(document.getElementById('g_obs').value);
-      const lat = parseFloat(document.getElementById('lat').value);
-      const lon = parseFloat(document.getElementById('lon').value);
-      const h = parseFloat(document.getElementById('h').value);
-      const rho_rock = parseFloat(document.getElementById('rho_rock').value);
-
-      // 🔹 這裡放你的計算公式
-      // 範例：簡單修正重力公式（可替換成真實計算）
-      const g_corrected = g_obs + (rho_rock - 2.67) * 10;
-
-      // 生成完整報告
-      reportBox.innerHTML = `
-        <h3>觀測報告</h3>
-        <p><strong>測站類型:</strong> ${station_type}</p>
-        <p><strong>觀測重力:</strong> ${g_obs.toFixed(2)} mGal</p>
-        <p><strong>緯度:</strong> ${lat.toFixed(4)}°</p>
-        <p><strong>經度:</strong> ${lon.toFixed(4)}°</p>
-        <p><strong>高程/水深:</strong> ${h.toFixed(1)} m</p>
-        <p><strong>地殼密度:</strong> ${rho_rock.toFixed(2)} g/cm³</p>
-        <p><strong>修正後重力:</strong> ${g_corrected.toFixed(2)} mGal</p>
-      `;
+    const copyBtn = document.getElementById('copyBtn');
+    const pycode = document.getElementById('pycode').innerText;
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(pycode);
+        copyBtn.innerText = '已複製 ✓';
+        setTimeout(()=> copyBtn.innerText = '複製程式碼', 2000);
+      } catch (e) {
+        alert('瀏覽器不支援自動複製，請手動選取並複製。');
+      }
     });
   </script>
 </body>

@@ -1,119 +1,108 @@
-import gradio as gr
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Gravity Station — Web Interface</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>地球物理重力計算工作站 v2.0</h1>
+    <p class="muted">輸入測站資料，按下「產生專業報告」。（後端由 Flask 提供計算）</p>
 
-#  crucial import: we are importing the "brain" (the GravityStation class)
-# from our "brain" file (HW_Gravity_Calculator.py)
-# 關鍵！我們要從「大腦」檔案中，匯入「大腦」的 Class
-from HW_Gravity_Calculator import GravityStation
+    <section class="form-card">
+      <form id="gravityForm">
+        <div class="row">
+          <label>測站類型</label>
+          <select name="station_type" id="station_type">
+            <option value="Land" selected>Land</option>
+            <option value="Marine">Marine</option>
+          </select>
+        </div>
 
-# --- Gradio 介面的核心函式 ---
-# 這個函式就是「臉」和「大腦」溝通的橋樑
+        <div class="row">
+          <label for="g_obs">觀測重力 g_obs (mGal)</label>
+          <input type="number" step="any" id="g_obs" name="g_obs" value="980717.39" required />
+        </div>
 
-def calculate_gravity_report(station_type, lat, lon, h, g_obs, rho_rock):
-    """
-    Gradio 按下按鈕時，會呼叫這個函式。
-    """
-    try:
-        # 1. 檢查輸入的類型是否正確
-        lat = float(lat)
-        lon = float(lon)
-        h = float(h)
-        g_obs = float(g_obs)
-        rho_rock = float(rho_rock)
-        
-        # 2. 建立「大腦」的實例 (Instance)
-        # 根據使用者選擇的類型 ("陸地" 或 "海洋") 來建立
-        station = GravityStation(
-            lat=lat,
-            lon=lon,
-            h=h,
-            g_obs=g_obs,
-            station_type=station_type.lower(), # 轉成小寫 "land" 或 "marine"
-            rho_rock=rho_rock
-            # 我們在這裡使用自定義的岩石密度！這就是「彈性」！
-        )
-        
-        # 3. 呼叫「大腦」進行計算
-        station.process_all()
-        
-        # 4. 從「大腦」取得格式化的報告
-        station.generate_report()
-        report_text = station.report
-        
-        # 5. 把報告傳回給「臉」(Gradio 介面)
-        return report_text
-        
-    except Exception as e:
-        # 如果使用者亂輸入 (例如輸入文字)，就會在這裡報錯
-        return f"計算出錯了！ 😱\n請檢查你的輸入值是否都是數字。\n錯誤訊息: {str(e)}"
+        <div class="row">
+          <label for="lat">緯度 (degree)</label>
+          <input type="number" step="any" id="lat" name="lat" value="48.1195" required />
+        </div>
 
-# --- 建立 Gradio 介面 ("臉") ---
+        <div class="row">
+          <label for="lon">經度 (degree)</label>
+          <input type="number" step="any" id="lon" name="lon" value="12.1878" required />
+        </div>
 
-# 老師的歡迎詞
-intro_markdown = """
-# 👨‍🏫 地球物理重力計算工作站 v2.0
-(專業可擴展版)
+        <div class="row">
+          <label for="h">高程 / 水深 h (m)</label>
+          <input type="number" step="any" id="h" name="h" value="487.9" required />
+        </div>
 
-這是一個專業的地球物理計算工具，由一個「**Gradio 前端 (臉)**」和一個「**Python 後端 (大腦)**」組成。
-請輸入您測站的完整資料，本系統將自動計算完整的重力異常報告。
-"""
+        <details class="row" style="margin-top:8px;">
+          <summary>進階選項 (密度)</summary>
+          <label for="rho_rock">地殼岩石密度 ρ_rock (g/cm³)</label>
+          <input type="range" id="rho_rock" name="rho_rock" min="1.0" max="3.5" step="0.01" value="2.67" />
+          <span id="rho_val">2.67</span>
+        </details>
 
-with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="orange")) as demo:
-    
-    gr.Markdown(intro_markdown)
-    
-    with gr.Row():
-        # --- 左邊：輸入介面 ---
-        with gr.Column(scale=2):
-            gr.Markdown("### 1. 📡 輸入測站資料")
-            
-            station_type_input = gr.Radio(
-                ["Land", "Marine"], 
-                label="測站類型 (Station Type)", 
-                value="Land"
-            )
-            
-            g_obs_input = gr.Number(label="觀測重力 (g_obs) [mGal]", value=980717.39)
-            lat_input = gr.Number(label="緯度 (Latitude) [度]", value=48.1195)
-            lon_input = gr.Number(label="經度 (Longitude) [度]", value=12.1878)
-            h_input = gr.Number(label="高程(陸地) / 水深(海洋) (h) [m]", value=487.9)
-            
-            with gr.Accordion("進階選項 (密度)", open=False):
-                rho_rock_input = gr.Slider(
-                    minimum=1.0, 
-                    maximum=3.5, 
-                    value=2.67, 
-                    step=0.01, 
-                    label="地殼岩石密度 (ρ_rock) [g/cm³]"
-                )
-            
-            submit_button = gr.Button("🚀 產生專業報告", variant="primary")
+        <div class="row">
+          <button type="submit" id="submitBtn">🚀 產生專業報告</button>
+        </div>
+      </form>
+    </section>
 
-        # --- 右邊：輸出介面 ---
-        with gr.Column(scale=3):
-            gr.Markdown("### 2. 📄 輸出計算報告")
-            report_output = gr.Textbox(
-                label="地球物理計算結果",
-                lines=17,
-                show_copy_button=True
-            )
+    <section class="result-card">
+      <h2>計算報告</h2>
+      <pre id="reportBox" class="report-box">結果會顯示在這裡...</pre>
+    </section>
+  </main>
 
-    # 綁定按鈕與函式
-    submit_button.click(
-        fn=calculate_gravity_report,
-        inputs=[
-            station_type_input,
-            lat_input,
-            lon_input,
-            h_input,
-            g_obs_input,
-            rho_rock_input
-        ],
-        outputs=[report_output]
-    )
-    
-    # 學生作業資訊
-    gr.Markdown("---")
-    gr.Markdown("作業七 - 地球物理重力計算 (可擴展模組版)")
+  <script>
+    // 範例前端行為：透過 fetch 將 JSON 傳到後端 /calculate
+    const form = document.getElementById('gravityForm');
+    const reportBox = document.getElementById('reportBox');
+    const rho = document.getElementById('rho_rock');
+    const rhoVal = document.getElementById('rho_val');
 
-# 啟動 APP
-demo.launch()
+    rho.addEventListener('input', (e) => {
+      rhoVal.textContent = e.target.value;
+    });
+
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      reportBox.textContent = "計算中，請稍候…";
+
+      const payload = {
+        station_type: document.getElementById('station_type').value,
+        g_obs: document.getElementById('g_obs').value,
+        lat: document.getElementById('lat').value,
+        lon: document.getElementById('lon').value,
+        h: document.getElementById('h').value,
+        rho_rock: document.getElementById('rho_rock').value
+      };
+
+      try {
+        const resp = await fetch('/calculate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json();
+          reportBox.textContent = "伺服器回傳錯誤： " + (err.message || JSON.stringify(err));
+          return;
+        }
+
+        const data = await resp.json();
+        reportBox.textContent = data.report;
+      } catch (e) {
+        reportBox.textContent = "無法連線至後端，請確認伺服器是否啟動。\n錯誤：" + e;
+      }
+    });
+  </script>
+</body>
+</html>

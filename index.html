@@ -6,13 +6,15 @@
   <title>Gravity Station — Web Interface</title>
   <link rel="stylesheet" href="/static/styles.css" />
   <style>
-    /* 簡單樣式讓報告看起來更清楚 */
+    /* 報告樣式 */
     .report-section { 
       border: 1px solid #ccc; 
       padding: 1em; 
       margin-top: 1em; 
       background: #f9f9f9; 
+      white-space: pre-wrap;
     }
+    .row { margin-bottom: 0.8em; }
   </style>
 </head>
 <body>
@@ -82,11 +84,10 @@
       rhoVal.textContent = e.target.value;
     });
 
-    // 表單提交事件
-    form.addEventListener('submit', (e) => {
-      e.preventDefault(); // 不刷新頁面
+    // 表單提交事件（純前端運算）
+    form.addEventListener('submit', (ev) => {
+      ev.preventDefault(); // 不刷新頁面
 
-      // 讀取表單資料
       const station_type = document.getElementById('station_type').value;
       const g_obs = parseFloat(document.getElementById('g_obs').value);
       const lat = parseFloat(document.getElementById('lat').value);
@@ -94,22 +95,21 @@
       const h = parseFloat(document.getElementById('h').value);
       const rho_rock = parseFloat(document.getElementById('rho_rock').value);
 
-      // 這裡可以放你想要的計算公式
-      const g_corrected = g_obs + (rho_rock - 2.67) * 10; // 範例計算
+      // 🔹 這裡放你的計算公式
+      // 範例：簡單修正重力公式（可替換成真實計算）
+      const g_corrected = g_obs + (rho_rock - 2.67) * 10;
 
       // 生成完整報告
-      const reportHTML = `
+      reportBox.innerHTML = `
         <h3>觀測報告</h3>
         <p><strong>測站類型:</strong> ${station_type}</p>
-        <p><strong>觀測重力:</strong> ${g_obs} mGal</p>
-        <p><strong>緯度:</strong> ${lat}°</p>
-        <p><strong>經度:</strong> ${lon}°</p>
-        <p><strong>高程/水深:</strong> ${h} m</p>
-        <p><strong>地殼密度:</strong> ${rho_rock} g/cm³</p>
+        <p><strong>觀測重力:</strong> ${g_obs.toFixed(2)} mGal</p>
+        <p><strong>緯度:</strong> ${lat.toFixed(4)}°</p>
+        <p><strong>經度:</strong> ${lon.toFixed(4)}°</p>
+        <p><strong>高程/水深:</strong> ${h.toFixed(1)} m</p>
+        <p><strong>地殼密度:</strong> ${rho_rock.toFixed(2)} g/cm³</p>
         <p><strong>修正後重力:</strong> ${g_corrected.toFixed(2)} mGal</p>
       `;
-
-      reportBox.innerHTML = reportHTML;
     });
   </script>
 </body>

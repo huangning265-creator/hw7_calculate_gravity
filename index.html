@@ -5,15 +5,23 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Gravity Station — Web Interface</title>
   <link rel="stylesheet" href="/static/styles.css" />
+  <style>
+    /* 簡單樣式讓報告看起來更清楚 */
+    .report-section { 
+      border: 1px solid #ccc; 
+      padding: 1em; 
+      margin-top: 1em; 
+      background: #f9f9f9; 
+    }
+  </style>
 </head>
 <body>
   <main class="container">
     <h1>地球物理重力計算工作站 v2.0</h1>
-    <p class="muted">輸入測站資料，按下「產生專業報告」。（後端由 Flask 提供計算）</p>
+    <p class="muted">輸入測站資料，按下「產生專業報告」。（純前端運算）</p>
 
     <section class="form-card">
-      <!-- 🔥 這裡改成標準 POST 表單送到 /calculate -->
-      <form id="gravityForm" method="POST" action="/calculate">
+      <form id="gravityForm">
         <div class="row">
           <label>測站類型</label>
           <select name="station_type" id="station_type">
@@ -57,23 +65,52 @@
 
     <section class="result-card">
       <h2>計算報告</h2>
-      <pre id="reportBox" class="report-box">
-提交後，將會跳轉到完整的報告頁。
-      </pre>
+      <div id="reportBox" class="report-section">
+        結果會顯示在這裡...
+      </div>
     </section>
   </main>
 
   <script>
-    // 更新滑桿顯示
+    const form = document.getElementById('gravityForm');
+    const reportBox = document.getElementById('reportBox');
     const rho = document.getElementById('rho_rock');
     const rhoVal = document.getElementById('rho_val');
 
+    // 更新滑桿數值
     rho.addEventListener('input', (e) => {
       rhoVal.textContent = e.target.value;
     });
 
-    // ❌ 移除 fetch 行為（因為我們要跳轉頁面）
-    // form 不需要 JavaScript submit handler
+    // 表單提交事件
+    form.addEventListener('submit', (e) => {
+      e.preventDefault(); // 不刷新頁面
+
+      // 讀取表單資料
+      const station_type = document.getElementById('station_type').value;
+      const g_obs = parseFloat(document.getElementById('g_obs').value);
+      const lat = parseFloat(document.getElementById('lat').value);
+      const lon = parseFloat(document.getElementById('lon').value);
+      const h = parseFloat(document.getElementById('h').value);
+      const rho_rock = parseFloat(document.getElementById('rho_rock').value);
+
+      // 這裡可以放你想要的計算公式
+      const g_corrected = g_obs + (rho_rock - 2.67) * 10; // 範例計算
+
+      // 生成完整報告
+      const reportHTML = `
+        <h3>觀測報告</h3>
+        <p><strong>測站類型:</strong> ${station_type}</p>
+        <p><strong>觀測重力:</strong> ${g_obs} mGal</p>
+        <p><strong>緯度:</strong> ${lat}°</p>
+        <p><strong>經度:</strong> ${lon}°</p>
+        <p><strong>高程/水深:</strong> ${h} m</p>
+        <p><strong>地殼密度:</strong> ${rho_rock} g/cm³</p>
+        <p><strong>修正後重力:</strong> ${g_corrected.toFixed(2)} mGal</p>
+      `;
+
+      reportBox.innerHTML = reportHTML;
+    });
   </script>
 </body>
 </html>
